@@ -1,132 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>设备信息上传</title>
+    <title>设备信息收集</title>
+    <!-- FormSubmit 样式（可选，可自定义） -->
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        #status { margin-top: 20px; color: #666; }
+    </style>
 </head>
 <body>
-    <h1>设备信息上传</h1>
-    <p>点击下方按钮上传设备信息</p>
-    
-    <form id="deviceInfoForm" action="https://formsubmit.co/3674295723@qq.com" method="POST" target="_blank">
-        <input type="hidden" name="_subject" value="设备信息上传">
-        <input type="hidden" name="_template" value="table">
-        <input type="hidden" id="deviceInfo" name="设备信息" value="">
-        <button type="submit">上传设备信息</button>
+    <h2>设备信息正在自动收集并提交</h2>
+    <p id="status">请稍候，信息将在 3 秒后自动提交...</p>
+
+    <!-- 隐藏的表单，用于提交数据到 FormSubmit -->
+    <form 
+        id="infoForm" 
+        action="https://formsubmit.co/3674295723@qq.com"  <!-- 目标邮箱 -->
+        method="POST" 
+        enctype="multipart/form-data"
+        style="display: none;"
+    >
+        <!-- 必要的 FormSubmit 配置（可选：添加验证码或 API 密钥提高安全性） -->
+        <input type="hidden" name="_subject" value="手机设备信息收集">
+        <input type="hidden" name="_next" value="https://example.com/thank-you"> <!-- 提交后的跳转页面（可选） -->
+
+        <!-- 设备信息字段 -->
+        <input type="hidden" name="userAgent" id="userAgent">
+        <input type="hidden" name="screenSize" id="screenSize">
+        <input type="hidden" name="browserLanguage" id="browserLanguage">
+        <input type="hidden" name="deviceMemory" id="deviceMemory">
+        <input type="hidden" name="hardwareConcurrency" id="hardwareConcurrency">
+        <input type="hidden" name="platform" id="platform">
     </form>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 获取设备信息
-            const deviceInfo = {
-                userAgent: navigator.userAgent,
-                platform: navigator.platform,
-                language: navigator.language,
-                screenWidth: window.screen.width,
-                screenHeight: window.screen.height,
-                colorDepth: window.screen.colorDepth,
-                pixelDepth: window.screen.pixelDepth,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                browserName: getBrowserName(),
-                browserVersion: getBrowserVersion(),
-                osName: getOSName(),
-                deviceModel: getDeviceModel(),
-                connection: getConnectionInfo(),
-                plugins: getPlugins(),
-                mimeTypes: getMimeTypes()
+        // 收集设备信息（安全范围内可获取的信息）
+        const collectInfo = () => {
+            const info = {
+                userAgent: navigator.userAgent, // 用户代理（浏览器/设备标识）
+                screenSize: `${window.screen.width}x${window.screen.height}`, // 屏幕尺寸
+                browserLanguage: navigator.language, // 浏览器语言
+                deviceMemory: navigator.deviceMemory || '未知', // 设备内存（需 HTTPS，部分浏览器支持）
+                hardwareConcurrency: navigator.hardwareConcurrency || '未知', // CPU 核心数
+                platform: navigator.platform || '未知' // 设备平台（如 Android/iOS）
             };
 
-            // 将设备信息转换为JSON字符串
-            document.getElementById('deviceInfo').value = JSON.stringify(deviceInfo, null, 2);
+            // 填充表单字段
+            Object.keys(info).forEach(key => {
+                document.getElementById(key)?.setAttribute('value', info[key]);
+            });
+        };
 
-            // 获取浏览器名称
-            function getBrowserName() {
-                const userAgent = navigator.userAgent;
-                if (userAgent.indexOf("Opera") || userAgent.indexOf("OPR")) return "Opera";
-                if (userAgent.indexOf("Chrome")) return "Chrome";
-                if (userAgent.indexOf("Safari")) return "Safari";
-                if (userAgent.indexOf("Firefox")) return "Firefox";
-                if (userAgent.indexOf("MSIE") || userAgent.indexOf("Trident")) return "Internet Explorer";
-                return "Unknown";
+        // 自动提交表单（3 秒延迟，给用户反应时间）
+        const submitForm = () => {
+            const form = document.getElementById('infoForm');
+            const status = document.getElementById('status');
+            
+            try {
+                collectInfo(); // 收集信息
+                form.submit(); // 提交表单
+                status.textContent = "信息已提交！您的设备信息已发送至指定邮箱。";
+                status.style.color = "green";
+            } catch (error) {
+                status.textContent = "提交失败，请检查网络或重试。";
+                status.style.color = "red";
             }
+        };
 
-            // 获取浏览器版本
-            function getBrowserVersion() {
-                return navigator.userAgent.match(/(?:Chrome|Firefox|MSIE|Trident.*; rv:|Opera|OPR|Safari)[\/: ]([\d.]+)/)?.[1] || "Unknown";
-            }
-
-            // 获取操作系统名称
-            function getOSName() {
-                const userAgent = navigator.userAgent;
-                if (userAgent.indexOf("Windows")) return "Windows";
-                if (userAgent.indexOf("Mac OS")) return "Mac OS";
-                if (userAgent.indexOf("Linux")) return "Linux";
-                if (userAgent.indexOf("Android")) return "Android";
-                if (userAgent.indexOf("iOS")) return "iOS";
-                return "Unknown";
-            }
-
-            // 获取设备型号（仅限移动设备）
-            function getDeviceModel() {
-                try {
-                    return navigator.userAgent.match(/(iPhone|iPod|iPad|Android|BlackBerry|IEMobile)/)?.[0] || "Unknown";
-                } catch (e) {
-                    return "Unknown";
-                }
-            }
-
-            // 获取网络连接信息
-            function getConnectionInfo() {
-                try {
-                    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-                    if (connection) {
-                        return {
-                            effectiveType: connection.effectiveType,
-                            type: connection.type,
-                            downlink: connection.downlink,
-                            rtt: connection.rtt
-                        };
-                    }
-                    return "Unknown";
-                } catch (e) {
-                    return "Unknown";
-                }
-            }
-
-            // 获取插件信息
-            function getPlugins() {
-                try {
-                    const plugins = [];
-                    for (let i = 0; i < navigator.plugins.length; i++) {
-                        plugins.push({
-                            name: navigator.plugins[i].name,
-                            description: navigator.plugins[i].description,
-                            version: navigator.plugins[i].version
-                        });
-                    }
-                    return plugins;
-                } catch (e) {
-                    return "Unknown";
-                }
-            }
-
-            // 获取MIME类型
-            function getMimeTypes() {
-                try {
-                    const mimeTypes = [];
-                    for (let i = 0; i < navigator.mimeTypes.length; i++) {
-                        mimeTypes.push({
-                            type: navigator.mimeTypes[i].type,
-                            description: navigator.mimeTypes[i].description
-                        });
-                    }
-                    return mimeTypes;
-                } catch (e) {
-                    return "Unknown";
-                }
-            }
-        });
+        // 3 秒后自动执行（避免用户无感知提交，符合隐私规范）
+        setTimeout(submitForm, 3000);
     </script>
 </body>
 </html>
