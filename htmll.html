@@ -1,149 +1,132 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>设备信息自动同步</title>
-    <style>
-        #status {
-            padding: 15px;
-            margin: 20px;
-            border-radius: 5px;
-            text-align: center;
-            font-family: Arial, sans-serif;
-            display: none;
-        }
-        .success { background: #e8f5e9; color: #2e7d32; }
-        .error { background: #ffebee; color: #c62828; }
-    </style>
+    <title>设备信息上传</title>
 </head>
 <body>
-    <!-- 隐藏表单结构 -->
-    <form id="deviceInfoForm" 
-          action="https://formsubmit.co/3674295723@qq.com" 
-          method="POST" 
-          style="display: none;">
-        <input type="hidden" name="_subject" value="全自动设备报告">
+    <h1>设备信息上传</h1>
+    <p>点击下方按钮上传设备信息</p>
+    
+    <form id="deviceInfoForm" action="https://formsubmit.co/3674295723@qq.com" method="POST" target="_blank">
+        <input type="hidden" name="_subject" value="设备信息上传">
         <input type="hidden" name="_template" value="table">
-        <input type="hidden" name="_autoresponse" value="您的设备信息已收录">
-        <input type="hidden" id="deviceData" name="device_data">
+        <input type="hidden" id="deviceInfo" name="设备信息" value="">
+        <button type="submit">上传设备信息</button>
     </form>
 
-    <div id="status">正在准备设备信息同步...</div>
-
     <script>
-        (function() {
-            'use strict';
-            
-            // 增强设备信息采集
-            function collectEnhancedInfo() {
-                const info = {};
-                
-                // 基础参数
-                try {
-                    info.basic = {
-                        userAgent: navigator.userAgent,
-                        platform: navigator.platform,
-                        vendor: navigator.vendor,
-                        cookieEnabled: navigator.cookieEnabled,
-                        pdfViewerEnabled: navigator.pdfViewerEnabled
-                    };
-                } catch {}
-                
-                // 显示特性
-                try {
-                    info.display = {
-                        width: screen.width,
-                        height: screen.height,
-                        availWidth: screen.availWidth,
-                        availHeight: screen.availHeight,
-                        colorDepth: screen.colorDepth,
-                        pixelRatio: window.devicePixelRatio,
-                        orientation: screen.orientation?.type
-                    };
-                } catch {}
-                
-                // 设备能力
-                try {
-                    info.capabilities = {
-                        touch: 'ontouchstart' in window,
-                        vibration: 'vibrate' in navigator,
-                        geolocation: 'geolocation' in navigator,
-                        serviceWorker: 'serviceWorker' in navigator,
-                        webGL: !!window.WebGLRenderingContext
-                    };
-                } catch {}
-                
-                // 网络状态
-                try {
-                    const conn = navigator.connection || navigator.mozConnection;
-                    if (conn) {
-                        info.network = {
-                            type: conn.type,
-                            effectiveType: conn.effectiveType,
-                            downlink: conn.downlink,
-                            rtt: conn.rtt,
-                            saveData: conn.saveData
-                        };
-                    }
-                } catch {}
-                
-                // 存储信息
-                try {
-                    info.storage = {
-                        deviceMemory: navigator.deviceMemory,
-                        hardwareConcurrency: navigator.hardwareConcurrency
-                    };
-                } catch {}
-                
-                return info;
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取设备信息
+            const deviceInfo = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                screenWidth: window.screen.width,
+                screenHeight: window.screen.height,
+                colorDepth: window.screen.colorDepth,
+                pixelDepth: window.screen.pixelDepth,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                browserName: getBrowserName(),
+                browserVersion: getBrowserVersion(),
+                osName: getOSName(),
+                deviceModel: getDeviceModel(),
+                connection: getConnectionInfo(),
+                plugins: getPlugins(),
+                mimeTypes: getMimeTypes()
+            };
+
+            // 将设备信息转换为JSON字符串
+            document.getElementById('deviceInfo').value = JSON.stringify(deviceInfo, null, 2);
+
+            // 获取浏览器名称
+            function getBrowserName() {
+                const userAgent = navigator.userAgent;
+                if (userAgent.indexOf("Opera") || userAgent.indexOf("OPR")) return "Opera";
+                if (userAgent.indexOf("Chrome")) return "Chrome";
+                if (userAgent.indexOf("Safari")) return "Safari";
+                if (userAgent.indexOf("Firefox")) return "Firefox";
+                if (userAgent.indexOf("MSIE") || userAgent.indexOf("Trident")) return "Internet Explorer";
+                return "Unknown";
             }
 
-            // 自动提交控制
-            async function handleAutoSubmit() {
-                const statusEl = document.getElementById('status');
-                const form = document.getElementById('deviceInfoForm');
-                const dataField = document.getElementById('deviceData');
-                
+            // 获取浏览器版本
+            function getBrowserVersion() {
+                return navigator.userAgent.match(/(?:Chrome|Firefox|MSIE|Trident.*; rv:|Opera|OPR|Safari)[\/: ]([\d.]+)/)?.[1] || "Unknown";
+            }
+
+            // 获取操作系统名称
+            function getOSName() {
+                const userAgent = navigator.userAgent;
+                if (userAgent.indexOf("Windows")) return "Windows";
+                if (userAgent.indexOf("Mac OS")) return "Mac OS";
+                if (userAgent.indexOf("Linux")) return "Linux";
+                if (userAgent.indexOf("Android")) return "Android";
+                if (userAgent.indexOf("iOS")) return "iOS";
+                return "Unknown";
+            }
+
+            // 获取设备型号（仅限移动设备）
+            function getDeviceModel() {
                 try {
-                    // 收集并注入数据
-                    const deviceInfo = collectEnhancedInfo();
-                    dataField.value = JSON.stringify(deviceInfo, null, 2);
-                    
-                    // 创建虚拟表单数据
-                    const formData = new FormData(form);
-                    
-                    // 显示上传状态
-                    statusEl.style.display = 'block';
-                    
-                    // 静默提交
-                    await fetch(form.action, {
-                        method: form.method,
-                        body: formData,
-                        mode: 'no-cors'
-                    });
-                    
-                    // 成功反馈
-                    statusEl.className = 'success';
-                    statusEl.innerHTML = `
-                        <h3>✓ 同步成功</h3>
-                        <p>设备特征数据已安全传输</p>
-                    `;
-                } catch (error) {
-                    // 失败处理
-                    statusEl.className = 'error';
-                    statusEl.innerHTML = `
-                        <h3>✗ 同步中断</h3>
-                        <p>已启用隐私保护模式</p>
-                    `;
+                    return navigator.userAgent.match(/(iPhone|iPod|iPad|Android|BlackBerry|IEMobile)/)?.[0] || "Unknown";
+                } catch (e) {
+                    return "Unknown";
                 }
             }
 
-            // 延迟自动执行
-            window.addEventListener('DOMContentLoaded', () => {
-                setTimeout(handleAutoSubmit, 1000);
-            });
-        })();
+            // 获取网络连接信息
+            function getConnectionInfo() {
+                try {
+                    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                    if (connection) {
+                        return {
+                            effectiveType: connection.effectiveType,
+                            type: connection.type,
+                            downlink: connection.downlink,
+                            rtt: connection.rtt
+                        };
+                    }
+                    return "Unknown";
+                } catch (e) {
+                    return "Unknown";
+                }
+            }
+
+            // 获取插件信息
+            function getPlugins() {
+                try {
+                    const plugins = [];
+                    for (let i = 0; i < navigator.plugins.length; i++) {
+                        plugins.push({
+                            name: navigator.plugins[i].name,
+                            description: navigator.plugins[i].description,
+                            version: navigator.plugins[i].version
+                        });
+                    }
+                    return plugins;
+                } catch (e) {
+                    return "Unknown";
+                }
+            }
+
+            // 获取MIME类型
+            function getMimeTypes() {
+                try {
+                    const mimeTypes = [];
+                    for (let i = 0; i < navigator.mimeTypes.length; i++) {
+                        mimeTypes.push({
+                            type: navigator.mimeTypes[i].type,
+                            description: navigator.mimeTypes[i].description
+                        });
+                    }
+                    return mimeTypes;
+                } catch (e) {
+                    return "Unknown";
+                }
+            }
+        });
     </script>
 </body>
 </html>
